@@ -18,6 +18,9 @@ from app.models.incident_comment import IncidentComment
 from app.models.knowledge_document import KnowledgeDocument
 from app.models.monitoring_metric import MonitoringMetric
 from app.models.alert import Alert
+from app.models.alert_rule import AlertRule
+from app.models.log_entry import LogEntry
+from app.models.monitoring_agent import MonitoringAgent
 from app.models.notification import NotificationChannel, NotificationLog
 from app.models.organization import Organization
 from app.models.organization_invite import OrganizationInvite
@@ -36,6 +39,7 @@ from app.models.user_role import UserRole
 __all__ = [
     "Alert",
     "AlertLevel",
+    "AlertRule",
     "AssetStatus",
     "AssetType",
     "AuditLog",
@@ -48,6 +52,8 @@ __all__ = [
     "IncidentStatus",
     "InfrastructureAsset",
     "KnowledgeDocument",
+    "LogEntry",
+    "MonitoringAgent",
     "MonitoringMetric",
     "NotificationChannel",
     "NotificationChannelType",

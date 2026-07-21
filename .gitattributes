@@ -1,0 +1,2 @@
+# Ensure shell scripts use LF on Linux/Docker (Windows checkouts)
+*.sh text eol=lf

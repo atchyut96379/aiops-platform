@@ -24,7 +24,10 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import HistoryIcon from '@mui/icons-material/History';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import CampaignIcon from '@mui/icons-material/Campaign';
+import DnsIcon from '@mui/icons-material/Dns';
 import LogoutIcon from '@mui/icons-material/Logout';
+import RuleIcon from '@mui/icons-material/Rule';
+import ArticleIcon from '@mui/icons-material/Article';
 import { useAuth } from '../contexts/AuthContext';
 
 const drawerWidth = 260;
@@ -32,8 +35,11 @@ const drawerWidth = 260;
 const navItems = [
   { label: 'Dashboard', path: '/', icon: <DashboardIcon /> },
   { label: 'Assets', path: '/assets', icon: <StorageIcon /> },
+  { label: 'Agents', path: '/agents', icon: <DnsIcon /> },
   { label: 'Monitoring', path: '/monitoring', icon: <MonitorHeartIcon /> },
   { label: 'Alerts', path: '/alerts', icon: <NotificationsActiveIcon /> },
+  { label: 'Alert Rules', path: '/alert-rules', icon: <RuleIcon /> },
+  { label: 'Logs', path: '/logs', icon: <ArticleIcon /> },
   { label: 'Incidents', path: '/incidents', icon: <ReportProblemIcon /> },
   { label: 'Notifications', path: '/notifications', icon: <CampaignIcon /> },
   { label: 'AI Assistant', path: '/ai', icon: <SmartToyIcon /> },
