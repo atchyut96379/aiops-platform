@@ -55,6 +55,9 @@ export function AIPage() {
       <Typography variant="h5" fontWeight={700} gutterBottom>
         AI Assistant
       </Typography>
+      <Typography variant="body2" color="text.secondary" mb={2}>
+        Semantic RAG retrieval is used when OpenAI is enabled. Documents are chunked and indexed on save.
+      </Typography>
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
         <Tab label="Log analysis" />
         <Tab label="Chat" />

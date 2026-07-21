@@ -19,6 +19,7 @@ import { MonitoringPage } from './pages/MonitoringPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { AuditPage } from './pages/AuditPage';
 import { AIPage } from './pages/AIPage';
+import { IntegrationsPage } from './pages/IntegrationsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { useAuth } from './contexts/AuthContext';
 
@@ -48,6 +49,7 @@ export default function App() {
           <Route path="incidents/:id" element={<IncidentDetailPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="ai" element={<AIPage />} />
+          <Route path="integrations" element={<IntegrationsPage />} />
           <Route path="audit" element={<AuditPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

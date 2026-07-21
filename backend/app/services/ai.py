@@ -10,6 +10,7 @@ from app.models.user import User
 from app.repositories.knowledge_document import KnowledgeDocumentRepository
 from app.repositories.role import UserRoleRepository
 from app.schemas.ai import AIAnalysisResponse, AIChatRequest, AIChatResponse, LogAnalysisRequest
+from app.services.rag import RAGService
 
 logger = get_logger(__name__)
 
@@ -19,18 +20,21 @@ class AIService:
         self.db = db
         self.knowledge = KnowledgeDocumentRepository(db)
         self.memberships = UserRoleRepository(db)
+        self.rag = RAGService(db)
 
     async def analyze_logs(
         self, *, organization_id: int, requester: User, payload: LogAnalysisRequest
     ) -> AIAnalysisResponse:
         self._require_member(requester, organization_id)
-        context_docs = self.knowledge.search_content(organization_id, payload.log_text[:200], limit=3)
-        context = "\n\n".join(f"## {d.title}\n{d.content[:500]}" for d in context_docs)
+        chunks = await self.rag.retrieve(organization_id, payload.log_text[:500], limit=5)
+        context = "\n\n".join(
+            f"## Chunk {c.chunk_index + 1}\n{c.content[:600]}" for c in chunks
+        )
 
         prompt = f"""Analyze the following log output for an IT operations team.
 Provide: summary, likely root cause, severity (low/medium/high/critical), and recommended fixes.
 
-Knowledge base context:
+Retrieved knowledge (RAG):
 {context or 'None'}
 
 Logs:
@@ -42,14 +46,20 @@ Logs:
             root_cause="See analysis summary for inferred root cause.",
             severity="medium",
             recommendations=["Review the analysis summary and validate on affected systems."],
-            knowledge_used=[d.title for d in context_docs],
+            knowledge_used=[f"chunk-{c.document_id}-{c.chunk_index}" for c in chunks],
         )
 
     async def incident_assist(
         self, *, organization_id: int, requester: User, title: str, description: str
     ) -> AIAnalysisResponse:
         self._require_member(requester, organization_id)
+        query = f"{title}\n{description or ''}"
+        chunks = await self.rag.retrieve(organization_id, query, limit=3)
+        context = "\n".join(c.content[:400] for c in chunks)
         prompt = f"""You are an SRE assistant. Given this incident, suggest investigation steps and remediation.
+
+Relevant runbooks/knowledge:
+{context or 'None'}
 
 Title: {title}
 Description: {description or 'N/A'}
@@ -61,17 +71,18 @@ Provide actionable steps."""
             root_cause="Pending investigation",
             severity="high",
             recommendations=answer.split("\n")[:5],
-            knowledge_used=[],
+            knowledge_used=[f"chunk-{c.document_id}-{c.chunk_index}" for c in chunks],
         )
 
     async def chat(
         self, *, organization_id: int, requester: User, payload: AIChatRequest
     ) -> AIChatResponse:
         self._require_member(requester, organization_id)
-        context_docs = self.knowledge.search_content(organization_id, payload.message, limit=2)
-        context = "\n".join(d.content[:400] for d in context_docs)
+        chunks = await self.rag.retrieve(organization_id, payload.message, limit=3)
+        context = "\n".join(c.content[:400] for c in chunks)
         prompt = f"""You are an AI operations assistant for an enterprise AIOps platform.
-Use this knowledge if relevant: {context}
+Use this retrieved knowledge if relevant:
+{context or 'None'}
 
 User: {payload.message}
 """

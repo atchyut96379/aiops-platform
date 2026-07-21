@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import asyncio
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,7 +31,31 @@ async def lifespan(_: FastAPI):
         logger.info("System roles seeded")
     finally:
         db.close()
+
+    retention_task = None
+    if settings.RETENTION_JOB_ENABLED:
+        retention_task = asyncio.create_task(_retention_loop())
+
     yield
+
+    if retention_task is not None:
+        retention_task.cancel()
+        try:
+            await retention_task
+        except asyncio.CancelledError:
+            pass
+
+
+async def _retention_loop() -> None:
+    from app.tasks.retention import run_log_retention
+
+    while True:
+        try:
+            result = await asyncio.to_thread(run_log_retention)
+            logger.info("Log retention job completed: %s", result)
+        except Exception:
+            logger.exception("Log retention job error")
+        await asyncio.sleep(settings.RETENTION_JOB_INTERVAL_HOURS * 3600)
 
 
 app = FastAPI(

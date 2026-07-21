@@ -28,6 +28,7 @@ import DnsIcon from '@mui/icons-material/Dns';
 import LogoutIcon from '@mui/icons-material/Logout';
 import RuleIcon from '@mui/icons-material/Rule';
 import ArticleIcon from '@mui/icons-material/Article';
+import CloudQueueIcon from '@mui/icons-material/CloudQueue';
 import { useAuth } from '../contexts/AuthContext';
 
 const drawerWidth = 260;
@@ -43,6 +44,7 @@ const navItems = [
   { label: 'Incidents', path: '/incidents', icon: <ReportProblemIcon /> },
   { label: 'Notifications', path: '/notifications', icon: <CampaignIcon /> },
   { label: 'AI Assistant', path: '/ai', icon: <SmartToyIcon /> },
+  { label: 'Integrations', path: '/integrations', icon: <CloudQueueIcon /> },
   { label: 'Audit Logs', path: '/audit', icon: <HistoryIcon /> },
   { label: 'Settings', path: '/settings', icon: <SettingsIcon /> },
 ];

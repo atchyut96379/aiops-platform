@@ -18,6 +18,8 @@ from app.models.incident_comment import IncidentComment
 from app.models.knowledge_document import KnowledgeDocument
 from app.models.monitoring_metric import MonitoringMetric
 from app.models.alert import Alert
+from app.models.cloud_integration import CloudIntegration
+from app.models.knowledge_chunk import KnowledgeChunk
 from app.models.alert_rule import AlertRule
 from app.models.log_entry import LogEntry
 from app.models.monitoring_agent import MonitoringAgent
@@ -50,7 +52,9 @@ __all__ = [
     "IncidentComment",
     "IncidentSeverity",
     "IncidentStatus",
+    "CloudIntegration",
     "InfrastructureAsset",
+    "KnowledgeChunk",
     "KnowledgeDocument",
     "LogEntry",
     "MonitoringAgent",

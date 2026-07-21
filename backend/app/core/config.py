@@ -41,7 +41,12 @@ class Settings(BaseSettings):
     # AI (Module 07) — optional; stub responses when unset
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
+    EMBEDDING_MODEL: str = "text-embedding-3-small"
     AI_ENABLED: bool = False
+
+    # Background jobs
+    RETENTION_JOB_ENABLED: bool = True
+    RETENTION_JOB_INTERVAL_HOURS: int = 6
 
     @field_validator("SECRET_KEY")
     @classmethod

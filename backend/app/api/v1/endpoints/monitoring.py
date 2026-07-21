@@ -25,6 +25,24 @@ def _org_id(current: CurrentUser) -> int:
     return current.organization_id
 
 
+@router.get(
+    "/live",
+    summary="Live monitoring snapshot across all assets",
+)
+def live_snapshot(
+    db: DbSession,
+    current: CurrentUser = Depends(require_any_authenticated),
+    minutes: int = Query(15, ge=1, le=120),
+) -> dict:
+    from app.services.live_monitoring import LiveMonitoringService
+
+    return LiveMonitoringService(db).get_live_snapshot(
+        organization_id=_org_id(current),
+        requester=current.user,
+        minutes=minutes,
+    )
+
+
 @router.post(
     "/assets/{asset_id}/metrics",
     response_model=MonitoringMetricResponse,

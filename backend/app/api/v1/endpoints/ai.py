@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.api.v1.deps import AuthenticatedUser, CurrentUser, DbSession
 from app.schemas.ai import (
@@ -11,8 +11,10 @@ from app.schemas.ai import (
     LogAnalysisRequest,
 )
 from app.services.ai import AIService
+from app.services.rag import RAGService
 from app.repositories.knowledge_document import KnowledgeDocumentRepository
 from app.models.knowledge_document import KnowledgeDocument
+from app.schemas.common import MessageResponse
 
 router = APIRouter(prefix="/organizations/me/ai", tags=["AI Assistant"])
 
@@ -66,7 +68,7 @@ def list_knowledge(db: DbSession, current: AuthenticatedUser) -> list[KnowledgeD
     response_model=KnowledgeDocumentResponse,
     summary="Create knowledge base document",
 )
-def create_knowledge(
+async def create_knowledge(
     payload: KnowledgeDocumentCreate, db: DbSession, current: AuthenticatedUser
 ) -> KnowledgeDocumentResponse:
     doc = KnowledgeDocument(
@@ -79,4 +81,22 @@ def create_knowledge(
     KnowledgeDocumentRepository(db).add(doc)
     db.commit()
     db.refresh(doc)
+    await RAGService(db).index_document(doc)
     return KnowledgeDocumentResponse.model_validate(doc)
+
+
+@router.post(
+    "/knowledge/{document_id}/reindex",
+    response_model=MessageResponse,
+    summary="Reindex knowledge document for RAG",
+)
+async def reindex_knowledge(
+    document_id: int, db: DbSession, current: AuthenticatedUser
+) -> MessageResponse:
+    doc = KnowledgeDocumentRepository(db).get(document_id)
+    if doc is None or doc.organization_id != _org_id(current):
+        from app.core.exceptions import NotFoundError
+
+        raise NotFoundError("Document not found")
+    count = await RAGService(db).index_document(doc)
+    return MessageResponse(message=f"Indexed {count} chunks for document {document_id}")

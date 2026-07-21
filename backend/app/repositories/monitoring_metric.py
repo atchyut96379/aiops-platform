@@ -58,14 +58,19 @@ class MonitoringMetricRepository(BaseRepository[MonitoringMetric]):
         )
         return list(self.db.execute(stmt).all())
 
-    def recent_for_organization(
+    def list_for_organization_since(
         self,
         organization_id: int,
-        metric_type: Optional[str] = None,
-        limit: int = 100,
+        since: datetime,
+        limit: int = 200,
     ) -> Sequence[MonitoringMetric]:
-        stmt = select(MonitoringMetric).where(MonitoringMetric.organization_id == organization_id)
-        if metric_type is not None:
-            stmt = stmt.where(MonitoringMetric.metric_type == metric_type)
-        stmt = stmt.order_by(MonitoringMetric.recorded_at.desc()).limit(limit)
+        stmt = (
+            select(MonitoringMetric)
+            .where(
+                MonitoringMetric.organization_id == organization_id,
+                MonitoringMetric.recorded_at >= since,
+            )
+            .order_by(MonitoringMetric.recorded_at.desc())
+            .limit(limit)
+        )
         return self.db.scalars(stmt).all()

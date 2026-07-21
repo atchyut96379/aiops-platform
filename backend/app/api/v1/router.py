@@ -11,6 +11,7 @@ from app.api.v1.endpoints import (
     dashboard,
     infrastructure,
     incidents,
+    integrations,
     logs,
     monitoring,
     notifications,
@@ -19,6 +20,7 @@ from app.api.v1.endpoints import (
     roles,
     teams,
     users,
+    ws,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -41,3 +43,5 @@ api_router.include_router(agents.router)
 api_router.include_router(agents.agent_router)
 api_router.include_router(logs.router)
 api_router.include_router(billing.router)
+api_router.include_router(integrations.router)
+api_router.include_router(ws.router)
