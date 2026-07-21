@@ -71,14 +71,40 @@ class MonitoringService:
         )
         self.db.commit()
         self.db.refresh(metric)
-        # Evaluate metric for alerting rules (best-effort)
+        self._evaluate_alerts(organization_id, metric, requester.id)
+        return self._to_response(metric)
+
+    def record_metric_from_agent(
+        self,
+        *,
+        organization_id: int,
+        asset_id: int,
+        payload: MonitoringMetricCreate,
+    ) -> MonitoringMetricResponse:
+        """Record metrics from a monitoring agent (no user JWT required)."""
+        asset = self._get_asset_or_404(organization_id, asset_id)
+        metric = MonitoringMetric(
+            organization_id=organization_id,
+            asset_id=asset.id,
+            metric_type=payload.metric_type,
+            metric_value=payload.metric_value,
+            unit=payload.unit,
+            recorded_at=payload.recorded_at or datetime.now(timezone.utc),
+        )
+        metric.details = payload.details
+        self.metrics.add(metric)
+        self.db.commit()
+        self.db.refresh(metric)
+        self._evaluate_alerts(organization_id, metric, requester_id=0)
+        return self._to_response(metric)
+
+    def _evaluate_alerts(self, organization_id: int, metric: MonitoringMetric, requester_id: int) -> None:
         try:
             AlertingService(self.db).evaluate_metric_and_alert(
-                organization_id=organization_id, metric=metric, requester_id=requester.id
+                organization_id=organization_id, metric=metric, requester_id=requester_id
             )
         except Exception:
             pass
-        return self._to_response(metric)
 
     def list_metrics(
         self,

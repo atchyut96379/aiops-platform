@@ -33,6 +33,36 @@ export function SettingsPage() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('read_only');
   const [inviteError, setInviteError] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
+  const { data: planInfo } = useQuery({
+    queryKey: ['billing-plan'],
+    queryFn: async () => {
+      const { data: plan } = await api.get('/api/v1/organizations/me/billing/plan');
+      return plan as { plan: string; limits: Record<string, number | boolean> };
+    },
+  });
+
+  const passwordMutation = useMutation({
+    mutationFn: () =>
+      api.post('/api/v1/auth/change-password', {
+        current_password: currentPassword,
+        new_password: newPassword,
+      }),
+    onSuccess: () => {
+      setCurrentPassword('');
+      setNewPassword('');
+      setPasswordError('');
+      setPasswordMessage('Password updated successfully');
+    },
+    onError: (err) => {
+      setPasswordMessage('');
+      setPasswordError(getApiErrorMessage(err, 'Failed to change password'));
+    },
+  });
 
   const { data, error } = useQuery({
     queryKey: ['profile'],
@@ -94,6 +124,33 @@ export function SettingsPage() {
             </CardContent>
           </Card>
         )}
+
+        <Card variant="outlined">
+          <CardContent>
+            <Typography variant="h6" gutterBottom>Subscription plan</Typography>
+            <Typography variant="body1">Current plan: <strong>{planInfo?.plan ?? 'free'}</strong></Typography>
+            {planInfo?.limits && (
+              <Typography variant="body2" color="text.secondary" mt={1}>
+                Agents: {String(planInfo.limits.max_agents)} · Assets: {String(planInfo.limits.max_assets)} · Alert rules: {String(planInfo.limits.max_alert_rules)}
+              </Typography>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card variant="outlined">
+          <CardContent>
+            <Typography variant="h6" gutterBottom>Change password</Typography>
+            {passwordError && <Alert severity="error" sx={{ mb: 2 }}>{passwordError}</Alert>}
+            {passwordMessage && <Alert severity="success" sx={{ mb: 2 }}>{passwordMessage}</Alert>}
+            <Stack spacing={2}>
+              <TextField label="Current password" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} fullWidth />
+              <TextField label="New password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} fullWidth />
+              <Button variant="contained" onClick={() => passwordMutation.mutate()} disabled={!currentPassword || !newPassword}>
+                Update password
+              </Button>
+            </Stack>
+          </CardContent>
+        </Card>
 
         <Card variant="outlined">
           <CardContent>

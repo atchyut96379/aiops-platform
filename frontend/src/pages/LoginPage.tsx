@@ -56,6 +56,9 @@ export function LoginPage() {
             {loading ? 'Signing in…' : 'Sign in'}
           </Button>
         </Stack>
+        <Typography variant="body2" mt={1}>
+          <Link component={RouterLink} to="/forgot-password">Forgot password?</Link>
+        </Typography>
         <Typography variant="body2" mt={2}>
           No account?{' '}
           <Link component={RouterLink} to="/register">

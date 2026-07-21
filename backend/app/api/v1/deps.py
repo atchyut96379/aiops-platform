@@ -6,9 +6,11 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import UnauthorizedError
-from app.core.security import decode_token
+from app.core.security import decode_token, hash_opaque_token
 from app.db.database import get_db
+from app.models.monitoring_agent import MonitoringAgent
 from app.models.user import User
+from app.repositories.monitoring_agent import MonitoringAgentRepository
 from app.repositories.user import UserRepository
 from app.repositories.role import UserRoleRepository
 from app.core.exceptions import ForbiddenError
@@ -95,5 +97,19 @@ def get_current_user(
     )
 
 
+def get_monitoring_agent(
+    db: Annotated[Session, Depends(get_db)],
+    x_agent_key: Annotated[Optional[str], Header(alias="X-Agent-Key")] = None,
+) -> MonitoringAgent:
+    if not x_agent_key or not x_agent_key.startswith("aiops_"):
+        raise UnauthorizedError("Invalid or missing agent API key", code="invalid_agent_key")
+
+    agent = MonitoringAgentRepository(db).get_by_api_key_hash(hash_opaque_token(x_agent_key))
+    if agent is None:
+        raise UnauthorizedError("Invalid or inactive agent key", code="invalid_agent_key")
+    return agent
+
+
 DbSession = Annotated[Session, Depends(get_db)]
 AuthenticatedUser = Annotated[CurrentUser, Depends(get_current_user)]
+AgentContext = Annotated[MonitoringAgent, Depends(get_monitoring_agent)]

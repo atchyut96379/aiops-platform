@@ -1,13 +1,7 @@
 #!/usr/bin/env python3
-"""Collect and push CPU/memory metrics for all organization assets.
+"""Legacy metric pusher (user JWT). Prefer the monitoring agent instead.
 
-Usage:
-  set AIOPS_API_URL=http://localhost:8000
-  set AIOPS_EMAIL=admin@example.com
-  set AIOPS_PASSWORD=SecurePass1
-  python scripts/collect_metrics.py
-
-Schedule with Windows Task Scheduler or cron for continuous monitoring.
+See scripts/agent/aiops_agent.py for production use with API keys.
 """
 
 from __future__ import annotations

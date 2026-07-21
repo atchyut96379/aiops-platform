@@ -1,25 +1,36 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ForbiddenError, NotFoundError
 from app.models.alert import Alert
-from app.models.enums import IncidentSeverity, IncidentStatus, RoleName
+from app.models.enums import ALERT_LEVEL_RANK, IncidentSeverity, RoleName
 from app.models.user import User
 from app.repositories.alert import AlertRepository
+from app.repositories.alert_rule import AlertRuleRepository
 from app.repositories.infrastructure_asset import InfrastructureAssetRepository
 from app.repositories.monitoring_metric import MonitoringMetricRepository
 from app.repositories.user import UserRepository
 from app.schemas.incident import IncidentCreate
+from app.services.alert_rule import AlertRuleService
 from app.services.incident import IncidentService
 from app.services.notification import NotificationDispatchService
 
 
 class AlertingService:
+    OPERATORS = {
+        "gte": lambda value, threshold: value >= threshold,
+        "lte": lambda value, threshold: value <= threshold,
+        "gt": lambda value, threshold: value > threshold,
+        "lt": lambda value, threshold: value < threshold,
+        "eq": lambda value, threshold: value == threshold,
+    }
+
     def __init__(self, db: Session) -> None:
         self.db = db
         self.alerts = AlertRepository(db)
+        self.rules = AlertRuleRepository(db)
         self.metrics = MonitoringMetricRepository(db)
         self.assets = InfrastructureAssetRepository(db)
         self.users = UserRepository(db)
@@ -29,32 +40,42 @@ class AlertingService:
     def evaluate_metric_and_alert(
         self, organization_id: int, metric: Any, requester_id: int
     ) -> None:
-        """Evaluate a metric and create an alert (and incident) when thresholds exceeded."""
+        """Evaluate a metric against configured alert rules and create alerts when triggered."""
         metric_type = metric.metric_type
         value = metric.metric_value
         asset_id = metric.asset_id
 
-        level: Optional[str] = None
-        if metric_type == "cpu.percent":
-            if value is None:
-                return
-            if value >= 90:
-                level = "critical"
-            elif value >= 75:
-                level = "warning"
-            else:
-                return
-        elif metric_type == "memory.percent":
-            if value is None:
-                return
-            if value >= 90:
-                level = "critical"
-            elif value >= 75:
-                level = "warning"
-            else:
-                return
-        else:
+        if value is None:
             return
+
+        AlertRuleService(self.db).seed_default_rules(organization_id)
+        matching_rules = self.rules.get_matching_rules(
+            organization_id, metric_type, asset_id
+        )
+        if not matching_rules:
+            return
+
+        triggered: list[tuple[Any, str]] = []
+        for rule in matching_rules:
+            op_fn = self.OPERATORS.get(rule.operator)
+            if op_fn is None:
+                continue
+            if not op_fn(value, rule.threshold):
+                continue
+
+            since = datetime.now(timezone.utc) - timedelta(minutes=rule.cooldown_minutes)
+            if self.rules.get_recent_alert_for_rule(
+                organization_id, rule.id, asset_id, since
+            ):
+                continue
+
+            triggered.append((rule, rule.level))
+
+        if not triggered:
+            return
+
+        triggered.sort(key=lambda item: ALERT_LEVEL_RANK.get(item[1], 0), reverse=True)
+        rule, level = triggered[0]
 
         alert = Alert(
             organization_id=organization_id,
@@ -62,7 +83,13 @@ class AlertingService:
             alert_type=metric_type,
             level=level,
         )
-        alert.details = {"metric_value": value}
+        alert.details = {
+            "metric_value": value,
+            "rule_id": rule.id,
+            "rule_name": rule.name,
+            "threshold": rule.threshold,
+            "operator": rule.operator,
+        }
         self.alerts.add(alert)
         self.db.flush()
 
@@ -78,7 +105,17 @@ class AlertingService:
         )
 
         if level == "critical":
-            requester = self.users.get(requester_id)
+            requester = self.users.get(requester_id) if requester_id else None
+            if requester is None:
+                from app.repositories.role import UserRoleRepository
+
+                memberships = UserRoleRepository(self.db).list_for_organization(
+                    organization_id
+                )
+                for membership in memberships:
+                    if membership.role and membership.role.name == RoleName.ORGANIZATION_ADMIN.value:
+                        requester = membership.user
+                        break
             if requester is not None:
                 try:
                     incident = self.incident_service.create_incident(
@@ -86,12 +123,17 @@ class AlertingService:
                         payload=IncidentCreate(
                             asset_id=asset_id,
                             incident_type="auto_alert",
-                            title=f"Auto incident: {metric_type} {value}",
+                            title=f"Auto incident: {rule.name} ({metric_type}={value})",
                             description=(
-                                f"Auto-generated incident from alert: {metric_type}={value}"
+                                f"Auto-generated from rule '{rule.name}': "
+                                f"{metric_type} {rule.operator} {rule.threshold}, actual={value}"
                             ),
                             severity=IncidentSeverity.CRITICAL,
-                            details={"metric_value": value, "alert_id": alert.id},
+                            details={
+                                "metric_value": value,
+                                "alert_id": alert.id,
+                                "rule_id": rule.id,
+                            },
                         ),
                         requester=requester,
                     )

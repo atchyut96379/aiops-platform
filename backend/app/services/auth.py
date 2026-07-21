@@ -113,6 +113,9 @@ class AuthService:
             ip_address=ip_address,
             user_agent=user_agent,
         )
+        from app.services.alert_rule import AlertRuleService
+
+        AlertRuleService(self.db).seed_default_rules(org.id)
         self.db.commit()
         self.db.refresh(user)
         self.db.refresh(org)
