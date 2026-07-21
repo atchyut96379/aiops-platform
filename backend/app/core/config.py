@@ -55,6 +55,13 @@ class Settings(BaseSettings):
     STRIPE_PRICE_PROFESSIONAL: str = ""
     STRIPE_PRICE_ENTERPRISE: str = ""
 
+    # First-run admin (optional — only used when the database has zero users)
+    BOOTSTRAP_ADMIN_EMAIL: str = ""
+    BOOTSTRAP_ADMIN_PASSWORD: str = ""
+    BOOTSTRAP_ADMIN_FIRST_NAME: str = "Admin"
+    BOOTSTRAP_ADMIN_LAST_NAME: str = "User"
+    BOOTSTRAP_ORG_NAME: str = "AIOps Organization"
+
     @field_validator("SECRET_KEY")
     @classmethod
     def secret_key_not_empty(cls, value: str) -> str:
