@@ -25,6 +25,9 @@ class Alert(Base):
     asset_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("infrastructure_assets.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    incident_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("incidents.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     alert_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     level: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="open", index=True)

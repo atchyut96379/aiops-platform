@@ -11,6 +11,7 @@ os.environ["APP_ENV"] = "test"
 os.environ["RATE_LIMIT_ENABLED"] = "false"
 os.environ["CORS_ORIGINS"] = "http://testserver"
 os.environ["EMAIL_ENABLED"] = "false"
+os.environ["UPLOAD_DIR"] = "test_uploads"
 
 import pytest
 from fastapi.testclient import TestClient

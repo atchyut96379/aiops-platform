@@ -95,6 +95,8 @@ class AlertingService:
                         ),
                         requester=requester,
                     )
+                    alert.incident_id = incident.id
+                    self.db.flush()
                     self.notifications.dispatch_incident(
                         organization_id=organization_id,
                         incident_id=incident.id,

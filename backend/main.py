@@ -38,7 +38,8 @@ app = FastAPI(
     version="0.1.0",
     description=(
         "Enterprise AI Operations Platform API. "
-        "Module 01: Authentication, users, organizations, and RBAC foundation."
+        "Modules 01–10: auth, orgs, infrastructure, monitoring, alerts, "
+        "incidents, notifications, AI, dashboard, audit."
     ),
     lifespan=lifespan,
     docs_url="/docs",
