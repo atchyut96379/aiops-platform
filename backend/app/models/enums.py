@@ -53,6 +53,20 @@ class AssetStatus(str, enum.Enum):
     OFFLINE = "offline"
 
 
+class IncidentSeverity(str, enum.Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class IncidentStatus(str, enum.Enum):
+    OPEN = "open"
+    IN_PROGRESS = "in_progress"
+    RESOLVED = "resolved"
+    CLOSED = "closed"
+
+
 class EnvironmentType(str, enum.Enum):
     PRODUCTION = "production"
     STAGING = "staging"

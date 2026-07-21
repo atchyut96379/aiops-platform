@@ -19,6 +19,7 @@ from app.schemas.monitoring import (
 )
 from app.services.infrastructure import InfrastructureService
 from app.models.enums import RoleName
+from app.services.alerting import AlertingService
 
 
 class MonitoringService:
@@ -70,6 +71,13 @@ class MonitoringService:
         )
         self.db.commit()
         self.db.refresh(metric)
+        # Evaluate metric for alerting rules (best-effort)
+        try:
+            AlertingService(self.db).evaluate_metric_and_alert(
+                organization_id=organization_id, metric=metric, requester_id=requester.id
+            )
+        except Exception:
+            pass
         return self._to_response(metric)
 
     def list_metrics(
