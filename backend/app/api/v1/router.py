@@ -16,6 +16,7 @@ from app.api.v1.endpoints import (
     monitoring,
     notifications,
     organizations,
+    platforms,
     projects,
     roles,
     teams,
@@ -44,4 +45,5 @@ api_router.include_router(agents.agent_router)
 api_router.include_router(logs.router)
 api_router.include_router(billing.router)
 api_router.include_router(integrations.router)
+api_router.include_router(platforms.router)
 api_router.include_router(ws.router)

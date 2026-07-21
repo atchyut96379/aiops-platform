@@ -30,5 +30,6 @@ class CloudSyncResult(BaseModel):
     integration_id: int
     provider: str
     assets_discovered: int
+    assets_imported: int = 0
     assets: list[dict[str, Any]]
     message: str

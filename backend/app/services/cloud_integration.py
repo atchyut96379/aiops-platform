@@ -1,6 +1,6 @@
 import json
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -12,6 +12,10 @@ from app.repositories.cloud_integration import CloudIntegrationRepository
 from app.repositories.infrastructure_asset import InfrastructureAssetRepository
 from app.repositories.role import UserRoleRepository
 from app.schemas.integration import CloudIntegrationCreate, CloudIntegrationResponse, CloudSyncResult
+from app.services.cloud.aws import discover_aws_ec2_instances
+from app.services.cloud.azure import discover_azure_vms
+from app.services.cloud.gcp import discover_gcp_vms
+from app.services.infrastructure import InfrastructureService
 
 
 class CloudIntegrationService:
@@ -73,12 +77,26 @@ class CloudIntegrationService:
         integration.sync_status = "syncing"
         self.db.flush()
 
-        discovered = self._discover_assets(integration)
+        credentials = {}
+        if integration.credentials_json:
+            try:
+                credentials = json.loads(integration.credentials_json)
+            except json.JSONDecodeError:
+                credentials = {}
+
+        discovered = self._discover_assets(integration, credentials)
+        imported = InfrastructureService(self.db).upsert_cloud_assets(
+            organization_id=organization_id,
+            discovered=discovered,
+            requester=requester,
+        )
+
         integration.sync_status = "completed"
         integration.last_sync_at = datetime.now(timezone.utc)
         integration.integration_metadata = {
             **integration.integration_metadata,
             "last_discovered_count": len(discovered),
+            "last_imported_count": imported,
             "discovered": discovered,
         }
         self.db.commit()
@@ -86,44 +104,22 @@ class CloudIntegrationService:
             integration_id=integration.id,
             provider=integration.provider,
             assets_discovered=len(discovered),
+            assets_imported=imported,
             assets=discovered,
-            message=f"Sync completed for {integration.provider} integration '{integration.name}'",
+            message=(
+                f"Sync completed for {integration.provider} '{integration.name}': "
+                f"{len(discovered)} discovered, {imported} imported to inventory"
+            ),
         )
 
-    def _discover_assets(self, integration: CloudIntegration) -> list[dict[str, Any]]:
-        """Stub discovery — returns sample assets until real cloud SDK wiring is added."""
+    def _discover_assets(
+        self, integration: CloudIntegration, credentials: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         if integration.provider == "aws":
-            return [
-                {
-                    "asset_type": "aws_ec2",
-                    "hostname": "i-0abc123def4567890",
-                    "ip_address": "10.0.1.10",
-                    "metadata": {"region": "us-east-1", "instance_type": "t3.medium"},
-                },
-                {
-                    "asset_type": "aws_ec2",
-                    "hostname": "i-0fed987cba6543210",
-                    "ip_address": "10.0.1.11",
-                    "metadata": {"region": "us-east-1", "instance_type": "t3.large"},
-                },
-            ]
+            return discover_aws_ec2_instances(credentials, credentials.get("region"))
         if integration.provider == "azure":
-            return [
-                {
-                    "asset_type": "azure_vm",
-                    "hostname": "vm-prod-web-01",
-                    "ip_address": "10.1.0.4",
-                    "metadata": {"resource_group": "prod-rg", "location": "centralindia"},
-                }
-            ]
-        return [
-            {
-                "asset_type": "gcp_vm",
-                "hostname": "gcp-app-server-1",
-                "ip_address": "10.2.0.5",
-                "metadata": {"zone": "us-central1-a", "machine_type": "e2-medium"},
-            }
-        ]
+            return discover_azure_vms(credentials)
+        return discover_gcp_vms(credentials)
 
     def _require_member(self, user: User, organization_id: int) -> None:
         if user.is_superuser:

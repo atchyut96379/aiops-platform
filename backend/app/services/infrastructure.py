@@ -1,3 +1,5 @@
+from typing import Any
+
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
@@ -196,6 +198,54 @@ class InfrastructureService:
             by_type={row[0]: row[1] for row in self.assets.stats_by_type(organization_id)},
             by_status={row[0]: row[1] for row in self.assets.stats_by_status(organization_id)},
         )
+
+    def upsert_cloud_assets(
+        self,
+        *,
+        organization_id: int,
+        discovered: list[dict[str, Any]],
+        requester: User,
+    ) -> int:
+        """Import or update assets from cloud sync discovery."""
+        imported = 0
+        for item in discovered:
+            hostname = item.get("hostname")
+            if not hostname:
+                continue
+            existing = self.assets.get_by_hostname(organization_id, hostname)
+            if existing:
+                existing.ip_address = item.get("ip_address") or existing.ip_address
+                existing.os = item.get("os") or existing.os
+                if item.get("status"):
+                    existing.status = item["status"]
+                meta = existing.metadata_dict
+                meta.update(item.get("metadata") or {})
+                existing.metadata_dict = meta
+                imported += 1
+                continue
+            asset = InfrastructureAsset(
+                organization_id=organization_id,
+                asset_type=item.get("asset_type", "virtual_machine"),
+                hostname=hostname,
+                ip_address=item.get("ip_address"),
+                os=item.get("os"),
+                environment="production",
+                status=item.get("status", "unknown"),
+            )
+            asset.tags_list = ["cloud-sync"]
+            asset.metadata_dict = item.get("metadata") or {}
+            self.assets.add(asset)
+            imported += 1
+        if imported:
+            self.audit.record(
+                action="asset.cloud_import",
+                user_id=requester.id,
+                organization_id=organization_id,
+                resource_type="cloud_integration",
+                details={"imported_count": imported},
+            )
+            self.db.commit()
+        return imported
 
     def _get_asset_or_404(self, organization_id: int, asset_id: int) -> InfrastructureAsset:
         asset = self.assets.get(asset_id)
