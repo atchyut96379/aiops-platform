@@ -42,3 +42,29 @@ class UserRoleRepository(BaseRepository[UserRole]):
             UserRole.role_id == role_id,
         )
         return self.db.scalar(stmt) is not None
+
+    def list_for_organization(self, organization_id: int) -> Sequence[UserRole]:
+        stmt = select(UserRole).where(UserRole.organization_id == organization_id)
+        return self.db.scalars(stmt).all()
+
+    def delete_for_user_org(self, user_id: int, organization_id: int) -> None:
+        stmt = select(UserRole).where(
+            UserRole.user_id == user_id,
+            UserRole.organization_id == organization_id,
+        )
+        for membership in self.db.scalars(stmt).all():
+            self.db.delete(membership)
+        self.db.flush()
+
+    def delete_role_for_user_org(
+        self, user_id: int, organization_id: int, role_id: int
+    ) -> None:
+        stmt = select(UserRole).where(
+            UserRole.user_id == user_id,
+            UserRole.organization_id == organization_id,
+            UserRole.role_id == role_id,
+        )
+        membership = self.db.scalar(stmt)
+        if membership:
+            self.db.delete(membership)
+            self.db.flush()

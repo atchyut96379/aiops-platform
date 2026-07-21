@@ -79,6 +79,13 @@ class ResendVerificationRequest(BaseModel):
     email: EmailStr
 
 
+class AcceptInviteRequest(BaseModel):
+    token: str
+    first_name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    last_name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    password: Optional[str] = Field(default=None, min_length=8, max_length=72)
+
+
 class AuthUserContext(BaseModel):
     id: int
     email: EmailStr

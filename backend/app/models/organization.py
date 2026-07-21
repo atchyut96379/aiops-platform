@@ -10,6 +10,10 @@ from app.db.database import Base
 from app.models.enums import SubscriptionPlan
 
 if TYPE_CHECKING:
+    from app.models.infrastructure_asset import InfrastructureAsset
+    from app.models.organization_invite import OrganizationInvite
+    from app.models.project import Project
+    from app.models.team import Team
     from app.models.user_role import UserRole
 
 
@@ -40,6 +44,30 @@ class Organization(Base):
 
     memberships: Mapped[list["UserRole"]] = relationship(
         "UserRole",
+        back_populates="organization",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    invites: Mapped[list["OrganizationInvite"]] = relationship(
+        "OrganizationInvite",
+        back_populates="organization",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    teams: Mapped[list["Team"]] = relationship(
+        "Team",
+        back_populates="organization",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    projects: Mapped[list["Project"]] = relationship(
+        "Project",
+        back_populates="organization",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    assets: Mapped[list["InfrastructureAsset"]] = relationship(
+        "InfrastructureAsset",
         back_populates="organization",
         cascade="all, delete-orphan",
         lazy="selectin",

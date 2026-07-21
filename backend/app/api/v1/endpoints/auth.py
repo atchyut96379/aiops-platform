@@ -4,6 +4,7 @@ from app.api.v1.deps import AuthenticatedUser, DbSession, get_client_meta
 from app.core.config import settings
 from app.core.rate_limit import limiter
 from app.schemas.auth import (
+    AcceptInviteRequest,
     ChangePasswordRequest,
     ForgotPasswordRequest,
     LoginRequest,
@@ -17,7 +18,10 @@ from app.schemas.auth import (
 from app.schemas.common import MessageResponse, TokenPair
 from app.schemas.organization import OrganizationResponse
 from app.schemas.user import UserResponse
+from app.schemas.organization import OrganizationResponse
+from app.schemas.user import UserResponse
 from app.services.auth import AuthService
+from app.services.membership import MembershipService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -118,3 +122,20 @@ def change_password(
         user_agent=ua,
     )
     return MessageResponse(message="Password changed successfully")
+
+
+@router.post(
+    "/accept-invite",
+    response_model=dict,
+    summary="Accept organization invite",
+)
+def accept_invite(request: Request, payload: AcceptInviteRequest, db: DbSession) -> dict:
+    ip, ua = get_client_meta(request)
+    user, org, tokens = MembershipService(db).accept_invite(
+        payload, ip_address=ip, user_agent=ua
+    )
+    return {
+        "user": UserResponse.model_validate(user),
+        "organization": OrganizationResponse.model_validate(org),
+        "tokens": tokens,
+    }

@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 
-from app.api.v1.deps import AuthenticatedUser, CurrentUser, DbSession
+from app.api.v1.deps import AuthenticatedUser, CurrentUser, DbSession, get_client_meta
 from app.models.enums import RoleName
+from app.schemas.common import TokenPair
+from app.schemas.membership import SwitchOrganizationRequest
 from app.schemas.user import UserProfileResponse, UserResponse, UserUpdate
+from app.services.membership import MembershipService
 from app.security.rbac import require_roles
 from app.services.user import UserService
 
@@ -45,3 +48,23 @@ def list_users(
         limit=limit,
     )
     return [UserResponse.model_validate(u) for u in users]
+
+
+@router.post(
+    "/me/switch-organization",
+    response_model=TokenPair,
+    summary="Switch active organization and refresh tokens",
+)
+def switch_organization(
+    request: Request,
+    payload: SwitchOrganizationRequest,
+    db: DbSession,
+    current: AuthenticatedUser,
+) -> TokenPair:
+    ip, ua = get_client_meta(request)
+    return MembershipService(db).switch_organization(
+        current.user,
+        payload.organization_id,
+        ip_address=ip,
+        user_agent=ua,
+    )

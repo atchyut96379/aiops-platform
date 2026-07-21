@@ -1,4 +1,5 @@
-from typing import Optional
+import json
+from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
@@ -20,8 +21,14 @@ class AuditLogRepository(BaseRepository[AuditLog]):
         resource_id: Optional[str] = None,
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
-        details: Optional[str] = None,
+        details: Optional[str | dict[str, Any]] = None,
     ) -> AuditLog:
+        details_value: Optional[str]
+        if isinstance(details, dict):
+            details_value = json.dumps(details)
+        else:
+            details_value = details
+
         entry = AuditLog(
             action=action,
             user_id=user_id,
@@ -30,6 +37,6 @@ class AuditLogRepository(BaseRepository[AuditLog]):
             resource_id=resource_id,
             ip_address=ip_address,
             user_agent=user_agent,
-            details=details,
+            details=details_value,
         )
         return self.add(entry)

@@ -35,3 +35,13 @@ class EmailService:
             subject=f"{settings.APP_NAME} — Reset your password",
             body=f"Reset your password by opening: {link}",
         )
+
+    def send_organization_invite(
+        self, *, to: str, token: str, organization_name: str
+    ) -> None:
+        link = f"{settings.FRONTEND_URL}/accept-invite?token={token}"
+        self.send(
+            to=to,
+            subject=f"{settings.APP_NAME} — Invitation to join {organization_name}",
+            body=f"You have been invited to join {organization_name}. Accept the invite: {link}",
+        )

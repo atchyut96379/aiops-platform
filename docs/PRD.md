@@ -26,8 +26,8 @@ The application should be scalable, secure, cloud-ready, and follow clean archit
 | Module | Status | Description |
 |--------|--------|-------------|
 | 01 | Complete | Authentication & User Management |
-| 02 | Planned | Organization & Role Management |
-| 03 | Planned | Infrastructure Inventory |
+| 02 | Complete | Organization & Role Management |
+| 03 | Complete | Infrastructure Inventory |
 | 04 | Planned | Monitoring & Metrics |
 | 05 | Planned | Alerting & Notifications |
 | 06 | Planned | Incident Management |

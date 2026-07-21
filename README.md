@@ -4,9 +4,11 @@ Enterprise AI Operations Platform — monitor infrastructure, manage incidents, 
 
 ## Current status
 
-**Module 01 — Authentication & User Management** (in progress)
+**Module 01 — Authentication & User Management** (complete)  
+**Module 02 — Organization & Role Management** (complete)  
+**Module 03 — Infrastructure Inventory** (complete)
 
-See [docs/PRD.md](docs/PRD.md) and [docs/MODULE_01_AUTH.md](docs/MODULE_01_AUTH.md).
+See [docs/PRD.md](docs/PRD.md), [docs/MODULE_01_AUTH.md](docs/MODULE_01_AUTH.md), [docs/MODULE_02_ORG_ROLES.md](docs/MODULE_02_ORG_ROLES.md), and [docs/MODULE_03_INVENTORY.md](docs/MODULE_03_INVENTORY.md).
 
 ## Quick start (local)
 

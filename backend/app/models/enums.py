@@ -25,3 +25,37 @@ ROLE_DESCRIPTIONS: dict[RoleName, str] = {
     RoleName.SUPPORT_ENGINEER: "Support engineer with incident access",
     RoleName.READ_ONLY: "Read-only observer",
 }
+
+
+class InviteStatus(str, enum.Enum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    REVOKED = "revoked"
+    EXPIRED = "expired"
+
+
+class AssetType(str, enum.Enum):
+    LINUX_SERVER = "linux_server"
+    WINDOWS_SERVER = "windows_server"
+    VIRTUAL_MACHINE = "virtual_machine"
+    AWS_EC2 = "aws_ec2"
+    AZURE_VM = "azure_vm"
+    GCP_VM = "gcp_vm"
+    KUBERNETES_CLUSTER = "kubernetes_cluster"
+    DOCKER_HOST = "docker_host"
+
+
+class AssetStatus(str, enum.Enum):
+    HEALTHY = "healthy"
+    WARNING = "warning"
+    CRITICAL = "critical"
+    UNKNOWN = "unknown"
+    OFFLINE = "offline"
+
+
+class EnvironmentType(str, enum.Enum):
+    PRODUCTION = "production"
+    STAGING = "staging"
+    DEVELOPMENT = "development"
+    TESTING = "testing"
+    DR = "dr"
