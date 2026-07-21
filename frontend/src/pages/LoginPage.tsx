@@ -31,11 +31,16 @@ export function LoginPage() {
       await login(email, password, needsTotp ? totpCode : undefined);
       navigate('/', { replace: true });
     } catch (err) {
-      if (getApiErrorCode(err) === 'totp_required') {
+      const code = getApiErrorCode(err);
+      if (code === 'totp_required') {
         setNeedsTotp(true);
         setError('Enter the 6-digit code from your authenticator app');
+      } else if (code === 'invalid_credentials') {
+        setError(
+          'Invalid email or password. On a new server, register first — your local account is not copied to the VM database.',
+        );
       } else {
-        setError(getApiErrorMessage(err, 'Invalid email or password'));
+        setError(getApiErrorMessage(err, 'Sign in failed — check that deploy finished (docker compose ps)'));
       }
     } finally {
       setLoading(false);
