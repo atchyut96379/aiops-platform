@@ -1,6 +1,4 @@
-from datetime import datetime, timezone
 from typing import Any
-
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
