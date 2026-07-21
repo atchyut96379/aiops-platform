@@ -4,24 +4,31 @@ __pycache__/
 *.pyo
 
 # Virtual Environment
-backend/.venv/
 .venv/
+venv/
 
 # Environment variables
 .env
 
-# VS Code
-.vscode/
+# Local databases
+*.db
+*.sqlite3
 
-# Cursor
+# VS Code / Cursor
+.vscode/
 .cursor/
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Python cache
+# Pytest / coverage
 .pytest_cache/
+.coverage
+htmlcov/
 
 # Logs
 *.log
+
+# Alembic
+alembic/versions/*.pyc
