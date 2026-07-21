@@ -1,2 +1,5 @@
 # Ensure shell scripts use LF on Linux/Docker (Windows checkouts)
 *.sh text eol=lf
+
+# requirements.txt must stay UTF-8 (pip breaks on UTF-16)
+backend/requirements.txt text eol=lf
