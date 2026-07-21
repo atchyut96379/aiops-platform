@@ -20,6 +20,7 @@ import StorageIcon from '@mui/icons-material/Storage';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
+import CreditCardIcon from '@mui/icons-material/CreditCard';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HistoryIcon from '@mui/icons-material/History';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
@@ -46,6 +47,7 @@ const navItems = [
   { label: 'AI Assistant', path: '/ai', icon: <SmartToyIcon /> },
   { label: 'Integrations', path: '/integrations', icon: <CloudQueueIcon /> },
   { label: 'Audit Logs', path: '/audit', icon: <HistoryIcon /> },
+  { label: 'Billing', path: '/billing', icon: <CreditCardIcon /> },
   { label: 'Settings', path: '/settings', icon: <SettingsIcon /> },
 ];
 

@@ -1,16 +1,19 @@
 import json
+import re
 from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ForbiddenError, NotFoundError, ValidationAppError
-from app.models.enums import RoleName
+from app.models.enums import AssetType, RoleName
 from app.models.infrastructure_asset import InfrastructureAsset
 from app.models.platform_connection import PlatformConnection
 from app.models.user import User
+from app.repositories.infrastructure_asset import InfrastructureAssetRepository
 from app.repositories.platform_connection import PlatformConnectionRepository
 from app.repositories.role import UserRoleRepository
+from app.schemas.monitoring import MonitoringMetricCreate
 from app.schemas.platform import (
     PlatformCollectResult,
     PlatformConnectionCreate,
@@ -18,6 +21,7 @@ from app.schemas.platform import (
 )
 from app.services.collectors.docker_collector import collect_docker_metrics
 from app.services.collectors.kubernetes_collector import collect_kubernetes_snapshot
+from app.services.monitoring import MonitoringService
 
 
 class PlatformService:
@@ -31,6 +35,7 @@ class PlatformService:
     def __init__(self, db: Session) -> None:
         self.db = db
         self.connections = PlatformConnectionRepository(db)
+        self.assets = InfrastructureAssetRepository(db)
         self.memberships = UserRoleRepository(db)
 
     def list_connections(
@@ -88,13 +93,23 @@ class PlatformService:
         conn.collect_status = "completed"
         conn.last_collect_at = datetime.now(timezone.utc)
         conn.config = {**conn.config, "last_snapshot": snapshot}
+        asset = self._ensure_connection_asset(conn)
+        metrics_recorded = self._ingest_platform_metrics(
+            organization_id=organization_id,
+            connection=conn,
+            asset=asset,
+            snapshot=snapshot,
+        )
         self.db.commit()
 
         return PlatformCollectResult(
             connection_id=conn.id,
             connection_type=conn.connection_type,
             snapshot=snapshot,
-            message=f"Collected {conn.connection_type} metrics for '{conn.name}'",
+            message=(
+                f"Collected {conn.connection_type} metrics for '{conn.name}' "
+                f"({metrics_recorded} monitoring metrics recorded)"
+            ),
         )
 
     def _require_member(self, user: User, organization_id: int) -> None:
@@ -109,3 +124,130 @@ class PlatformService:
             return
         if not self.WRITE_ROLES.intersection(roles):
             raise ForbiddenError("Insufficient permissions to manage platform connections")
+
+    def _ensure_connection_asset(self, conn: PlatformConnection) -> InfrastructureAsset:
+        if conn.asset_id:
+            asset = self.assets.get(conn.asset_id)
+            if asset and asset.organization_id == conn.organization_id:
+                return asset
+
+        slug = re.sub(r"[^a-z0-9-]+", "-", conn.name.lower()).strip("-") or "platform"
+        hostname = f"{conn.connection_type}-{conn.id}-{slug}"[:200]
+        existing = self.assets.get_by_hostname(conn.organization_id, hostname)
+        if existing:
+            conn.asset_id = existing.id
+            return existing
+
+        asset_type = (
+            AssetType.DOCKER_HOST.value
+            if conn.connection_type == "docker"
+            else AssetType.KUBERNETES_CLUSTER.value
+        )
+        asset = InfrastructureAsset(
+            organization_id=conn.organization_id,
+            asset_type=asset_type,
+            hostname=hostname,
+            environment="production",
+            status="healthy",
+        )
+        asset.tags_list = ["platform", conn.connection_type]
+        asset.metadata_dict = {"platform_connection_id": conn.id, "name": conn.name}
+        self.assets.add(asset)
+        self.db.flush()
+        conn.asset_id = asset.id
+        return asset
+
+    def _ingest_platform_metrics(
+        self,
+        *,
+        organization_id: int,
+        connection: PlatformConnection,
+        asset: InfrastructureAsset,
+        snapshot: dict[str, Any],
+    ) -> int:
+        monitoring = MonitoringService(self.db)
+        recorded = 0
+
+        if connection.connection_type == "docker":
+            count = snapshot.get("count", 0)
+            monitoring.record_metric_from_agent(
+                organization_id=organization_id,
+                asset_id=asset.id,
+                payload=MonitoringMetricCreate(
+                    metric_type="platform.container.count",
+                    metric_value=float(count),
+                    unit="count",
+                    details={"connection_id": connection.id},
+                ),
+            )
+            recorded += 1
+            for container in snapshot.get("containers", []):
+                name = container.get("name", "unknown")
+                cpu = container.get("cpu_percent")
+                if cpu is not None:
+                    monitoring.record_metric_from_agent(
+                        organization_id=organization_id,
+                        asset_id=asset.id,
+                        payload=MonitoringMetricCreate(
+                            metric_type="platform.container.cpu",
+                            metric_value=float(cpu),
+                            unit="percent",
+                            details={"container": name, "connection_id": connection.id},
+                        ),
+                    )
+                    recorded += 1
+                memory = container.get("memory_percent")
+                if memory is not None:
+                    monitoring.record_metric_from_agent(
+                        organization_id=organization_id,
+                        asset_id=asset.id,
+                        payload=MonitoringMetricCreate(
+                            metric_type="platform.container.memory",
+                            metric_value=float(memory),
+                            unit="percent",
+                            details={"container": name, "connection_id": connection.id},
+                        ),
+                    )
+                    recorded += 1
+        else:
+            monitoring.record_metric_from_agent(
+                organization_id=organization_id,
+                asset_id=asset.id,
+                payload=MonitoringMetricCreate(
+                    metric_type="platform.node.count",
+                    metric_value=float(snapshot.get("node_count", 0)),
+                    unit="count",
+                    details={"connection_id": connection.id},
+                ),
+            )
+            monitoring.record_metric_from_agent(
+                organization_id=organization_id,
+                asset_id=asset.id,
+                payload=MonitoringMetricCreate(
+                    metric_type="platform.pod.count",
+                    metric_value=float(snapshot.get("pod_count", 0)),
+                    unit="count",
+                    details={"connection_id": connection.id},
+                ),
+            )
+            recorded += 2
+            for pod in snapshot.get("pods", []):
+                phase = pod.get("phase", "Unknown")
+                monitoring.record_metric_from_agent(
+                    organization_id=organization_id,
+                    asset_id=asset.id,
+                    payload=MonitoringMetricCreate(
+                        metric_type="platform.pod.running",
+                        metric_value=1.0 if phase == "Running" else 0.0,
+                        unit="boolean",
+                        details={
+                            "pod": pod.get("name"),
+                            "namespace": pod.get("namespace"),
+                            "phase": phase,
+                            "connection_id": connection.id,
+                        },
+                    ),
+                )
+                recorded += 1
+
+        return recorded

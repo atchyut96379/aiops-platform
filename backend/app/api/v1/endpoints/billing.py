@@ -1,10 +1,12 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 from app.api.v1.deps import AuthenticatedUser, CurrentUser, DbSession
-from app.schemas.common import MessageResponse
+from app.schemas.auth import BillingCheckoutRequest, BillingCheckoutResponse
+from app.services.stripe_billing import StripeBillingService
 from app.services.subscription import PLAN_LIMITS, get_plan_limits
 
 router = APIRouter(prefix="/organizations/me/billing", tags=["Billing"])
+webhook_router = APIRouter(prefix="/billing", tags=["Billing"])
 
 
 def _org_id(current: CurrentUser) -> int:
@@ -28,6 +30,7 @@ def get_plan(db: DbSession, current: AuthenticatedUser) -> dict:
     limits = get_plan_limits(org.subscription_plan)
     return {
         "plan": org.subscription_plan,
+        "stripe_configured": bool(org.stripe_customer_id),
         "limits": {
             "max_assets": limits.max_assets,
             "max_agents": limits.max_agents,
@@ -42,8 +45,27 @@ def get_plan(db: DbSession, current: AuthenticatedUser) -> dict:
     }
 
 
-@router.post("/upgrade-request", response_model=MessageResponse, summary="Request plan upgrade")
-def request_upgrade(db: DbSession, current: AuthenticatedUser) -> MessageResponse:
-    return MessageResponse(
-        message="Upgrade request recorded. Contact sales@aiops.local for Stripe billing integration."
+@router.post(
+    "/checkout",
+    response_model=BillingCheckoutResponse,
+    summary="Start Stripe checkout or demo upgrade",
+)
+def checkout(
+    payload: BillingCheckoutRequest,
+    db: DbSession,
+    current: AuthenticatedUser,
+) -> BillingCheckoutResponse:
+    result = StripeBillingService(db).create_checkout(
+        organization_id=_org_id(current),
+        plan=payload.plan,
+        requester=current.user,
+        roles=current.roles,
     )
+    return BillingCheckoutResponse(**result)
+
+
+@webhook_router.post("/webhook", summary="Stripe webhook handler")
+async def stripe_webhook(request: Request, db: DbSession) -> dict:
+    payload = await request.body()
+    signature = request.headers.get("stripe-signature")
+    return StripeBillingService(db).handle_webhook(payload, signature)

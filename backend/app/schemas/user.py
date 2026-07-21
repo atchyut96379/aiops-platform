@@ -35,6 +35,7 @@ class UserResponse(ORMModel):
     is_active: bool
     is_email_verified: bool
     is_superuser: bool
+    totp_enabled: bool = False
     phone: Optional[str] = None
     job_title: Optional[str] = None
     avatar_url: Optional[str] = None

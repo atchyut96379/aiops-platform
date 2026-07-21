@@ -25,6 +25,39 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=72)
+    totp_code: Optional[str] = Field(default=None, min_length=6, max_length=8)
+
+
+class TotpEnableRequest(BaseModel):
+    code: str = Field(min_length=6, max_length=8)
+
+
+class TotpDisableRequest(BaseModel):
+    password: str = Field(min_length=1, max_length=72)
+    code: str = Field(min_length=6, max_length=8)
+
+
+class TotpSetupResponse(BaseModel):
+    secret: str
+    provisioning_uri: str
+    totp_enabled: bool = False
+
+
+class TotpStatusResponse(BaseModel):
+    totp_enabled: bool
+
+
+class BillingCheckoutRequest(BaseModel):
+    plan: str = Field(min_length=1, max_length=50)
+
+
+class BillingCheckoutResponse(BaseModel):
+    mode: str
+    upgraded: bool
+    plan: str
+    checkout_url: Optional[str] = None
+    session_id: Optional[str] = None
+    message: Optional[str] = None
 
 
 class RefreshRequest(BaseModel):

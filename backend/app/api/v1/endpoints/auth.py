@@ -13,15 +13,18 @@ from app.schemas.auth import (
     RegisterRequest,
     ResendVerificationRequest,
     ResetPasswordRequest,
+    TotpDisableRequest,
+    TotpEnableRequest,
+    TotpSetupResponse,
+    TotpStatusResponse,
     VerifyEmailRequest,
 )
 from app.schemas.common import MessageResponse, TokenPair
 from app.schemas.organization import OrganizationResponse
 from app.schemas.user import UserResponse
-from app.schemas.organization import OrganizationResponse
-from app.schemas.user import UserResponse
 from app.services.auth import AuthService
 from app.services.membership import MembershipService
+from app.services.totp import TotpService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -50,6 +53,7 @@ def login(request: Request, payload: LoginRequest, db: DbSession) -> TokenPair:
     return AuthService(db).login(
         email=payload.email,
         password=payload.password,
+        totp_code=payload.totp_code,
         ip_address=ip,
         user_agent=ua,
     )
@@ -122,6 +126,34 @@ def change_password(
         user_agent=ua,
     )
     return MessageResponse(message="Password changed successfully")
+
+
+@router.get("/totp/status", response_model=TotpStatusResponse, summary="Get 2FA status")
+def totp_status(current: AuthenticatedUser, db: DbSession) -> TotpStatusResponse:
+    return TotpStatusResponse(**TotpService(db).status(current.user))
+
+
+@router.post("/totp/setup", response_model=TotpSetupResponse, summary="Begin 2FA setup")
+def totp_setup(current: AuthenticatedUser, db: DbSession) -> TotpSetupResponse:
+    return TotpSetupResponse(**TotpService(db).setup(current.user))
+
+
+@router.post("/totp/enable", response_model=MessageResponse, summary="Confirm and enable 2FA")
+def totp_enable(
+    payload: TotpEnableRequest, current: AuthenticatedUser, db: DbSession
+) -> MessageResponse:
+    result = TotpService(db).enable(current.user, code=payload.code)
+    return MessageResponse(message=result["message"])
+
+
+@router.post("/totp/disable", response_model=MessageResponse, summary="Disable 2FA")
+def totp_disable(
+    payload: TotpDisableRequest, current: AuthenticatedUser, db: DbSession
+) -> MessageResponse:
+    result = TotpService(db).disable(
+        current.user, password=payload.password, code=payload.code
+    )
+    return MessageResponse(message=result["message"])
 
 
 @router.post(

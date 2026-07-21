@@ -21,6 +21,7 @@ import { AuditPage } from './pages/AuditPage';
 import { AIPage } from './pages/AIPage';
 import { IntegrationsPage } from './pages/IntegrationsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { BillingPage } from './pages/BillingPage';
 import { useAuth } from './contexts/AuthContext';
 
 export default function App() {
@@ -52,6 +53,7 @@ export default function App() {
           <Route path="integrations" element={<IntegrationsPage />} />
           <Route path="audit" element={<AuditPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="billing" element={<BillingPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -10,7 +10,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { getApiErrorMessage } from '../api/client';
+import { getApiErrorCode, getApiErrorMessage } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 
 export function LoginPage() {
@@ -18,6 +18,8 @@ export function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [totpCode, setTotpCode] = useState('');
+  const [needsTotp, setNeedsTotp] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -26,10 +28,15 @@ export function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
+      await login(email, password, needsTotp ? totpCode : undefined);
       navigate('/', { replace: true });
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Invalid email or password'));
+      if (getApiErrorCode(err) === 'totp_required') {
+        setNeedsTotp(true);
+        setError('Enter the 6-digit code from your authenticator app');
+      } else {
+        setError(getApiErrorMessage(err, 'Invalid email or password'));
+      }
     } finally {
       setLoading(false);
     }
@@ -45,15 +52,25 @@ export function LoginPage() {
           Monitor infrastructure, manage incidents, and use AI assistance.
         </Typography>
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert severity={needsTotp ? 'info' : 'error'} sx={{ mb: 2 }}>
             {error}
           </Alert>
         )}
         <Stack component="form" spacing={2} onSubmit={handleSubmit}>
           <TextField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required fullWidth />
           <TextField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required fullWidth />
+          {needsTotp && (
+            <TextField
+              label="Authenticator code"
+              value={totpCode}
+              onChange={(e) => setTotpCode(e.target.value)}
+              required
+              fullWidth
+              inputProps={{ inputMode: 'numeric', autoComplete: 'one-time-code' }}
+            />
+          )}
           <Button type="submit" variant="contained" size="large" disabled={loading}>
-            {loading ? 'Signing in…' : 'Sign in'}
+            {loading ? 'Signing in…' : needsTotp ? 'Verify & sign in' : 'Sign in'}
           </Button>
         </Stack>
         <Typography variant="body2" mt={1}>

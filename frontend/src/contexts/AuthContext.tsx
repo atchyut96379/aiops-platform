@@ -14,7 +14,7 @@ interface AuthContextValue {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, totpCode?: string) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
   logout: () => void;
 }
@@ -58,8 +58,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void loadProfile();
   }, [loadProfile]);
 
-  const login = async (email: string, password: string) => {
-    const { data } = await api.post('/api/v1/auth/login', { email, password });
+  const login = async (email: string, password: string, totpCode?: string) => {
+    const { data } = await api.post('/api/v1/auth/login', {
+      email,
+      password,
+      totp_code: totpCode || undefined,
+    });
     storeAuth(data.access_token, data.refresh_token);
     setToken(data.access_token);
     const profile = await api.get('/api/v1/users/me');
