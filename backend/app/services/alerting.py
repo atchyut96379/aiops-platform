@@ -1,14 +1,19 @@
-from typing import Any
+from datetime import datetime, timezone
+from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import ForbiddenError, NotFoundError
 from app.models.alert import Alert
+from app.models.enums import IncidentSeverity, IncidentStatus, RoleName
+from app.models.user import User
 from app.repositories.alert import AlertRepository
+from app.repositories.infrastructure_asset import InfrastructureAssetRepository
 from app.repositories.monitoring_metric import MonitoringMetricRepository
+from app.repositories.user import UserRepository
+from app.schemas.incident import IncidentCreate
 from app.services.incident import IncidentService
-from app.models.enums import RoleName
-from app.core.exceptions import NotFoundError, ForbiddenError
-from datetime import datetime
+from app.services.notification import NotificationDispatchService
 
 
 class AlertingService:
@@ -16,17 +21,20 @@ class AlertingService:
         self.db = db
         self.alerts = AlertRepository(db)
         self.metrics = MonitoringMetricRepository(db)
+        self.assets = InfrastructureAssetRepository(db)
+        self.users = UserRepository(db)
         self.incident_service = IncidentService(db)
+        self.notifications = NotificationDispatchService(db)
 
-    def evaluate_metric_and_alert(self, organization_id: int, metric: Any, requester_id: int) -> None:
-        """Evaluate a metric and create an alert (and incident) when thresholds exceeded.
-
-        This is intentionally simple and rule-based for MVP.
-        """
+    def evaluate_metric_and_alert(
+        self, organization_id: int, metric: Any, requester_id: int
+    ) -> None:
+        """Evaluate a metric and create an alert (and incident) when thresholds exceeded."""
         metric_type = metric.metric_type
         value = metric.metric_value
         asset_id = metric.asset_id
 
+        level: Optional[str] = None
         if metric_type == "cpu.percent":
             if value is None:
                 return
@@ -48,12 +56,6 @@ class AlertingService:
         else:
             return
 
-        # Debug: surface alert creation path during tests
-        try:
-            pass
-        except Exception:
-            pass
-
         alert = Alert(
             organization_id=organization_id,
             asset_id=asset_id,
@@ -62,37 +64,50 @@ class AlertingService:
         )
         alert.details = {"metric_value": value}
         self.alerts.add(alert)
+        self.db.flush()
+
+        asset_hostname: Optional[str] = None
+        if asset_id is not None:
+            asset = self.assets.get(asset_id)
+            asset_hostname = asset.hostname if asset else None
+
+        self.notifications.dispatch_alert(
+            organization_id=organization_id,
+            alert=alert,
+            asset_hostname=asset_hostname,
+        )
+
+        if level == "critical":
+            requester = self.users.get(requester_id)
+            if requester is not None:
+                try:
+                    incident = self.incident_service.create_incident(
+                        organization_id=organization_id,
+                        payload=IncidentCreate(
+                            asset_id=asset_id,
+                            incident_type="auto_alert",
+                            title=f"Auto incident: {metric_type} {value}",
+                            description=(
+                                f"Auto-generated incident from alert: {metric_type}={value}"
+                            ),
+                            severity=IncidentSeverity.CRITICAL,
+                            details={"metric_value": value, "alert_id": alert.id},
+                        ),
+                        requester=requester,
+                    )
+                    self.notifications.dispatch_incident(
+                        organization_id=organization_id,
+                        incident_id=incident.id,
+                        title=incident.title,
+                        severity=incident.severity,
+                        description=incident.description,
+                    )
+                except Exception:
+                    pass
+
         self.db.commit()
 
-        # For critical alerts, auto-create an incident to kick off response.
-        if level == "critical":
-            try:
-                self.incident_service.create_incident(
-                    organization_id=organization_id,
-                    payload=type("P", (), {
-                        "asset_id": asset_id,
-                        "incident_type": "auto_alert",
-                        "title": f"Auto incident: {metric_type} {value}",
-                        "description": f"Auto-generated incident from alert: {metric_type}={value}",
-                        "severity": type("S", (), {"value": "critical"}),
-                        "details": {"metric_value": value},
-                    })(),
-                    requester=self._fake_user(requester_id),
-                )
-            except Exception:
-                # Fail-safe: do not block metric recording on incident errors
-                pass
-
-    def _fake_user(self, user_id: int):
-        # Lightweight User-like object for incident service calls
-        class U:
-            def __init__(self, id: int):
-                self.id = id
-                self.is_superuser = False
-
-        return U(user_id)
-
-    def acknowledge_alert(self, organization_id: int, alert_id: int, requester) -> Alert:
+    def acknowledge_alert(self, organization_id: int, alert_id: int, requester: User) -> Alert:
         alert = self.alerts.get(alert_id)
         if not alert:
             raise NotFoundError("Alert not found")
@@ -104,7 +119,7 @@ class AlertingService:
         self.db.commit()
         return alert
 
-    def resolve_alert(self, organization_id: int, alert_id: int, requester) -> Alert:
+    def resolve_alert(self, organization_id: int, alert_id: int, requester: User) -> Alert:
         alert = self.alerts.get(alert_id)
         if not alert:
             raise NotFoundError("Alert not found")

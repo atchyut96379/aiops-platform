@@ -11,6 +11,7 @@ from app.models.enums import SubscriptionPlan
 
 if TYPE_CHECKING:
     from app.models.infrastructure_asset import InfrastructureAsset
+    from app.models.notification import NotificationChannel
     from app.models.organization_invite import OrganizationInvite
     from app.models.project import Project
     from app.models.team import Team
@@ -68,6 +69,12 @@ class Organization(Base):
     )
     assets: Mapped[list["InfrastructureAsset"]] = relationship(
         "InfrastructureAsset",
+        back_populates="organization",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    notification_channels: Mapped[list["NotificationChannel"]] = relationship(
+        "NotificationChannel",
         back_populates="organization",
         cascade="all, delete-orphan",
         lazy="selectin",

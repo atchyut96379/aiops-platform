@@ -4,7 +4,13 @@ from fastapi import APIRouter, Depends, Query, status
 
 from app.api.v1.deps import CurrentUser, DbSession, get_client_meta
 from app.models.enums import RoleName
-from app.schemas.incident import IncidentCreate, IncidentResponse, IncidentUpdate
+from app.schemas.incident import (
+    IncidentCommentCreate,
+    IncidentCommentResponse,
+    IncidentCreate,
+    IncidentResponse,
+    IncidentUpdate,
+)
 from app.security.rbac import require_any_authenticated, require_roles
 from app.services.incident import IncidentService
 
@@ -88,4 +94,41 @@ def update_incident(
         payload=payload,
         requester=current.user,
         roles=current.roles,
+    )
+
+
+@router.get(
+    "/{incident_id}/comments",
+    response_model=list[IncidentCommentResponse],
+    summary="List incident comments",
+)
+def list_incident_comments(
+    incident_id: int,
+    db: DbSession,
+    current: CurrentUser = Depends(require_any_authenticated),
+) -> list[IncidentCommentResponse]:
+    return IncidentService(db).list_comments(
+        organization_id=_org_id(current),
+        incident_id=incident_id,
+        requester=current.user,
+    )
+
+
+@router.post(
+    "/{incident_id}/comments",
+    response_model=IncidentCommentResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Add incident comment",
+)
+def add_incident_comment(
+    incident_id: int,
+    payload: IncidentCommentCreate,
+    db: DbSession,
+    current: CurrentUser = Depends(require_any_authenticated),
+) -> IncidentCommentResponse:
+    return IncidentService(db).add_comment(
+        organization_id=_org_id(current),
+        incident_id=incident_id,
+        payload=payload,
+        requester=current.user,
     )

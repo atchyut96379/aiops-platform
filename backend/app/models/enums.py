@@ -62,9 +62,41 @@ class IncidentSeverity(str, enum.Enum):
 
 class IncidentStatus(str, enum.Enum):
     OPEN = "open"
+    ASSIGNED = "assigned"
+    INVESTIGATING = "investigating"
     IN_PROGRESS = "in_progress"
     RESOLVED = "resolved"
     CLOSED = "closed"
+
+
+class AlertLevel(str, enum.Enum):
+    CRITICAL = "critical"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+    WARNING = "warning"
+
+
+class NotificationChannelType(str, enum.Enum):
+    EMAIL = "email"
+    SLACK = "slack"
+    TEAMS = "teams"
+    WEBHOOK = "webhook"
+
+
+class NotificationStatus(str, enum.Enum):
+    SENT = "sent"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+
+
+ALERT_LEVEL_RANK: dict[str, int] = {
+    AlertLevel.CRITICAL.value: 5,
+    AlertLevel.HIGH.value: 4,
+    AlertLevel.WARNING.value: 3,
+    AlertLevel.MEDIUM.value: 2,
+    AlertLevel.LOW.value: 1,
+}
 
 
 class EnvironmentType(str, enum.Enum):

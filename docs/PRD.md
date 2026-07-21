@@ -28,9 +28,9 @@ The application should be scalable, secure, cloud-ready, and follow clean archit
 | 01 | Complete | Authentication & User Management |
 | 02 | Complete | Organization & Role Management |
 | 03 | Complete | Infrastructure Inventory |
-| 04 | Planned | Monitoring & Metrics |
-| 05 | Planned | Alerting & Notifications |
-| 06 | Planned | Incident Management |
+| 04 | Complete | Monitoring & Metrics (MVP) |
+| 05 | Complete | Alerting & Notifications |
+| 06 | Partial | Incident Management (comments done; attachments pending) |
 | 07 | Planned | AI Assistant |
 | 08 | Planned | Dashboard & Reporting |
 | 09 | Planned | Audit Logs |

@@ -7,10 +7,18 @@ from app.models.infrastructure_asset import InfrastructureAsset
 from app.models.user import User
 from app.repositories.audit import AuditLogRepository
 from app.repositories.incident import IncidentRepository
+from app.repositories.incident_comment import IncidentCommentRepository
 from app.repositories.infrastructure_asset import InfrastructureAssetRepository
 from app.repositories.role import UserRoleRepository
 from app.repositories.user import UserRepository
-from app.schemas.incident import IncidentCreate, IncidentResponse, IncidentUpdate
+from app.schemas.incident import (
+    IncidentCommentCreate,
+    IncidentCommentResponse,
+    IncidentCreate,
+    IncidentResponse,
+    IncidentUpdate,
+)
+from app.services.notification import NotificationDispatchService
 
 
 class IncidentService:
@@ -24,10 +32,12 @@ class IncidentService:
     def __init__(self, db: Session) -> None:
         self.db = db
         self.incidents = IncidentRepository(db)
+        self.comments = IncidentCommentRepository(db)
         self.assets = InfrastructureAssetRepository(db)
         self.memberships = UserRoleRepository(db)
         self.users = UserRepository(db)
         self.audit = AuditLogRepository(db)
+        self.notifications = NotificationDispatchService(db)
 
     def create_incident(
         self,
@@ -66,6 +76,17 @@ class IncidentService:
         )
         self.db.commit()
         self.db.refresh(incident)
+
+        if payload.severity in (IncidentSeverity.HIGH, IncidentSeverity.CRITICAL):
+            self.notifications.dispatch_incident(
+                organization_id=organization_id,
+                incident_id=incident.id,
+                title=incident.title,
+                severity=incident.severity,
+                description=incident.description,
+            )
+            self.db.commit()
+
         return self._to_response(incident)
 
     def list_incidents(
@@ -141,6 +162,47 @@ class IncidentService:
         self.db.refresh(incident)
         return self._to_response(incident)
 
+    def add_comment(
+        self,
+        *,
+        organization_id: int,
+        incident_id: int,
+        payload: IncidentCommentCreate,
+        requester: User,
+    ) -> IncidentCommentResponse:
+        self._require_org_member(requester, organization_id)
+        incident = self.incidents.get(incident_id)
+        if incident is None or incident.organization_id != organization_id:
+            raise NotFoundError("Incident not found")
+
+        from app.models.incident_comment import IncidentComment
+
+        comment = IncidentComment(
+            incident_id=incident.id,
+            user_id=requester.id,
+            body=payload.body.strip(),
+        )
+        self.comments.add(comment)
+        self.audit.record(
+            action="incident.comment_added",
+            user_id=requester.id,
+            organization_id=organization_id,
+            resource_type="incident",
+            resource_id=str(incident.id),
+        )
+        self.db.commit()
+        self.db.refresh(comment)
+        return self._comment_response(comment)
+
+    def list_comments(
+        self, *, organization_id: int, incident_id: int, requester: User
+    ) -> list[IncidentCommentResponse]:
+        self._require_org_member(requester, organization_id)
+        incident = self.incidents.get(incident_id)
+        if incident is None or incident.organization_id != organization_id:
+            raise NotFoundError("Incident not found")
+        return [self._comment_response(c) for c in self.comments.list_for_incident(incident_id)]
+
     def _get_asset_or_404(self, organization_id: int, asset_id: int) -> InfrastructureAsset:
         asset = self.assets.get(asset_id)
         if asset is None or asset.organization_id != organization_id or not asset.is_active:
@@ -175,6 +237,20 @@ class IncidentService:
             assignee_user_id=incident.assignee_user_id,
             resolution=incident.resolution,
             details=incident.details,
+            comment_count=len(incident.comments),
             created_at=incident.created_at,
             updated_at=incident.updated_at,
+        )
+
+    def _comment_response(self, comment) -> IncidentCommentResponse:
+        author = comment.author
+        return IncidentCommentResponse(
+            id=comment.id,
+            incident_id=comment.incident_id,
+            user_id=comment.user_id,
+            author_name=author.full_name if author else "",
+            author_email=author.email if author else "",
+            body=comment.body,
+            created_at=comment.created_at,
+            updated_at=comment.updated_at,
         )

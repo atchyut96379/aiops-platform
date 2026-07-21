@@ -38,5 +38,21 @@ class IncidentResponse(ORMModel):
     assignee_user_id: Optional[int] = None
     resolution: Optional[str] = None
     details: dict[str, Any] = Field(default_factory=dict)
+    comment_count: int = 0
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+class IncidentCommentCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=5000)
+
+
+class IncidentCommentResponse(ORMModel):
+    id: int
+    incident_id: int
+    user_id: int
+    author_name: str
+    author_email: str
+    body: str
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

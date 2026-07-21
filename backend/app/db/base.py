@@ -2,12 +2,15 @@
 
 from app.db.database import Base
 from app.models import (  # noqa: F401
+    Alert,
     AuditLog,
     EmailVerificationToken,
-    InfrastructureAsset,
     Incident,
-    Alert,
+    IncidentComment,
+    InfrastructureAsset,
     MonitoringMetric,
+    NotificationChannel,
+    NotificationLog,
     Organization,
     OrganizationInvite,
     PasswordResetToken,
