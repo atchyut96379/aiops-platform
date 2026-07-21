@@ -10,6 +10,8 @@ from app.core.security import decode_token
 from app.db.database import get_db
 from app.models.user import User
 from app.repositories.user import UserRepository
+from app.repositories.role import UserRoleRepository
+from app.core.exceptions import ForbiddenError
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -57,9 +59,33 @@ def get_current_user(
     if user is None or not user.is_active:
         raise UnauthorizedError("User not found or inactive", code="invalid_token")
 
-    org_id = x_organization_id if x_organization_id is not None else payload.get("org_id")
-    roles = list(payload.get("roles") or [])
+    # Determine organization context. Prefer token org unless X-Organization-Id is provided
+    # and the user is authorized for that organization. Do NOT allow arbitrary override.
+    token_org = payload.get("org_id")
     is_superuser = bool(payload.get("is_superuser") or user.is_superuser)
+
+    if x_organization_id is not None:
+        # If user is superuser, allow overriding org context.
+        if is_superuser:
+            org_id = x_organization_id
+        else:
+            # Validate membership for requested org
+            memberships = UserRoleRepository(db).list_for_user_org(user.id, int(x_organization_id))
+            if not memberships:
+                raise ForbiddenError("Organization context not allowed", code="forbidden_org")
+            org_id = int(x_organization_id)
+    else:
+        org_id = token_org
+
+    # Compute roles for the resolved organization to avoid stale/forged token roles
+    if is_superuser:
+        roles = ["SUPER_ADMIN"]
+    else:
+        if org_id is None:
+            roles = []
+        else:
+            memberships = UserRoleRepository(db).list_for_user_org(user.id, int(org_id))
+            roles = [m.role.name for m in memberships if m.role is not None]
 
     return CurrentUser(
         user=user,
