@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: aiops-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aiops
+      POSTGRES_PASSWORD: aiops
+      POSTGRES_DB: aiops
+    ports:
+      - "5432:5432"
+    volumes:
+      - aiops_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiops -d aiops"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: aiops-api
+    restart: unless-stopped
+    env_file:
+      - ../backend/.env.example
+    environment:
+      DATABASE_URL: postgresql+psycopg2://aiops:aiops@db:5432/aiops
+      SECRET_KEY: change-me-to-a-long-random-secret
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  aiops_pg_data:
