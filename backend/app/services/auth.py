@@ -126,6 +126,7 @@ class AuthService:
         *,
         email: str,
         password: str,
+        totp_code: str | None = None,
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
     ) -> TokenPair:
@@ -134,6 +135,16 @@ class AuthService:
             raise UnauthorizedError("Invalid email or password", code="invalid_credentials")
         if not user.is_active:
             raise UnauthorizedError("Account is disabled", code="account_disabled")
+
+        if user.totp_enabled:
+            if not totp_code:
+                raise UnauthorizedError(
+                    "Two-factor authentication code required",
+                    code="totp_required",
+                )
+            from app.services.totp import TotpService
+
+            TotpService(self.db).verify_login_code(user, totp_code)
 
         self.users.update_last_login(user)
         tokens = self._issue_token_pair(

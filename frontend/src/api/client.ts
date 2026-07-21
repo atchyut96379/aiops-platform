@@ -31,6 +31,12 @@ export function getApiErrorMessage(error: unknown, fallback = 'Something went wr
   return fallback;
 }
 
+export function getApiErrorCode(error: unknown): string | null {
+  if (!isAxiosError(error)) return null;
+  const data = error.response?.data as { error?: { code?: string } } | undefined;
+  return data?.error?.code ?? null;
+}
+
 export function setAuthToken(token: string | null) {
   if (token) {
     api.defaults.headers.common.Authorization = `Bearer ${token}`;

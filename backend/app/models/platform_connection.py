@@ -23,6 +23,9 @@ class PlatformConnection(Base):
         Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
     )
     connection_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    asset_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("infrastructure_assets.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     endpoint: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     config_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

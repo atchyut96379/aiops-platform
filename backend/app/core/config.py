@@ -48,6 +48,13 @@ class Settings(BaseSettings):
     RETENTION_JOB_ENABLED: bool = True
     RETENTION_JOB_INTERVAL_HOURS: int = 6
 
+    # Stripe billing (optional — demo upgrade when unset)
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+    STRIPE_PRICE_STARTER: str = ""
+    STRIPE_PRICE_PROFESSIONAL: str = ""
+    STRIPE_PRICE_ENTERPRISE: str = ""
+
     @field_validator("SECRET_KEY")
     @classmethod
     def secret_key_not_empty(cls, value: str) -> str:
@@ -70,6 +77,18 @@ class Settings(BaseSettings):
     @property
     def smtp_configured(self) -> bool:
         return bool(self.SMTP_HOST)
+
+    @property
+    def stripe_configured(self) -> bool:
+        return bool(self.STRIPE_SECRET_KEY)
+
+    def stripe_price_for_plan(self, plan: str) -> str:
+        mapping = {
+            "starter": self.STRIPE_PRICE_STARTER,
+            "professional": self.STRIPE_PRICE_PROFESSIONAL,
+            "enterprise": self.STRIPE_PRICE_ENTERPRISE,
+        }
+        return mapping.get(plan, "")
 
 
 @lru_cache
