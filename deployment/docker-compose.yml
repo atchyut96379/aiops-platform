@@ -3,16 +3,18 @@ services:
     image: postgres:16-alpine
     container_name: aiops-postgres
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: aiops
-      POSTGRES_PASSWORD: aiops
-      POSTGRES_DB: aiops
+      POSTGRES_USER: ${POSTGRES_USER:-aiops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aiops}
+      POSTGRES_DB: ${POSTGRES_DB:-aiops}
     ports:
       - "5432:5432"
     volumes:
       - aiops_pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aiops -d aiops"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aiops} -d ${POSTGRES_DB:-aiops}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -24,12 +26,24 @@ services:
     container_name: aiops-api
     restart: unless-stopped
     env_file:
-      - ../backend/.env.example
+      - .env
     environment:
-      DATABASE_URL: postgresql+psycopg2://aiops:aiops@db:5432/aiops
-      SECRET_KEY: change-me-to-a-long-random-secret
-      CORS_ORIGINS: http://localhost,http://localhost:5173
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-aiops}:${POSTGRES_PASSWORD:-aiops}@db:5432/${POSTGRES_DB:-aiops}
+      SECRET_KEY: ${SECRET_KEY:-change-me-to-a-long-random-secret}
+      APP_ENV: ${APP_ENV:-production}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:5173}
       UPLOAD_DIR: /app/uploads
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@aiops.local}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_TLS: ${SMTP_TLS:-true}
+      AI_ENABLED: ${AI_ENABLED:-false}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
     ports:
       - "8000:8000"
     volumes:
@@ -37,6 +51,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   web:
     build:
@@ -47,7 +67,8 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
 volumes:
   aiops_pg_data:

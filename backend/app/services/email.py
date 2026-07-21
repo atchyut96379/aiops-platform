@@ -1,3 +1,6 @@
+import smtplib
+from email.mime.text import MIMEText
+
 from app.core.config import settings
 from app.core.logging import get_logger
 
@@ -5,20 +8,36 @@ logger = get_logger(__name__)
 
 
 class EmailService:
-    """SMTP stub for Module 01. Logs messages when EMAIL_ENABLED is false."""
+    """Send email via SMTP when configured; otherwise log a stub message."""
 
     def send(self, *, to: str, subject: str, body: str) -> None:
         if not settings.EMAIL_ENABLED:
-            logger.info(
-                "EMAIL_STUB to=%s subject=%s body=%s",
-                to,
-                subject,
-                body,
-            )
+            logger.info("EMAIL_STUB to=%s subject=%s body=%s", to, subject, body)
             return
-        # Real SMTP integration deferred to a later module / ops config.
-        logger.warning("EMAIL_ENABLED=true but SMTP transport is not configured; logging instead")
-        logger.info("EMAIL to=%s subject=%s body=%s", to, subject, body)
+
+        if not settings.smtp_configured:
+            logger.warning(
+                "EMAIL_ENABLED=true but SMTP_HOST is not set; logging message instead"
+            )
+            logger.info("EMAIL to=%s subject=%s body=%s", to, subject, body)
+            return
+
+        message = MIMEText(body, "plain", "utf-8")
+        message["Subject"] = subject
+        message["From"] = settings.EMAIL_FROM
+        message["To"] = to
+
+        try:
+            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as server:
+                if settings.SMTP_TLS:
+                    server.starttls()
+                if settings.SMTP_USER:
+                    server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+                server.send_message(message)
+            logger.info("EMAIL_SENT to=%s subject=%s", to, subject)
+        except Exception:
+            logger.exception("Failed to send email to %s", to)
+            raise
 
     def send_verification(self, *, to: str, token: str) -> None:
         link = f"{settings.FRONTEND_URL}/verify-email?token={token}"

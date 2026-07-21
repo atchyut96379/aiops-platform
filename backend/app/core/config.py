@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:3000"
     EMAIL_ENABLED: bool = False
     EMAIL_FROM: str = "noreply@aiops.local"
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_TLS: bool = True
 
     # Auth rate limits (slowapi format)
     AUTH_RATE_LIMIT: str = "10/minute"
@@ -56,6 +61,10 @@ class Settings(BaseSettings):
     @property
     def ai_available(self) -> bool:
         return bool(self.AI_ENABLED and self.OPENAI_API_KEY)
+
+    @property
+    def smtp_configured(self) -> bool:
+        return bool(self.SMTP_HOST)
 
 
 @lru_cache

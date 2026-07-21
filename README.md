@@ -50,13 +50,42 @@ npm run dev
 
 ## Docker Compose (PostgreSQL + API + Nginx UI)
 
-```bash
+```powershell
 cd deployment
+copy .env.example .env
+# Edit .env — set SECRET_KEY, optional SMTP_* and OPENAI_API_KEY
 docker compose up --build
 ```
 
 - UI + API proxy: http://localhost
-- API direct: http://localhost:8000
+- API direct: http://localhost:8000/docs
+
+### Email notifications (optional)
+
+In `deployment/.env`:
+
+```
+EMAIL_ENABLED=true
+EMAIL_FROM=ops@yourdomain.com
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your@gmail.com
+SMTP_PASSWORD=your-app-password
+SMTP_TLS=true
+```
+
+Then add an **Email** channel in the UI under **Notifications**.
+
+### Automated metrics (optional)
+
+Push sample CPU/memory metrics on a schedule:
+
+```powershell
+$env:AIOPS_API_URL="http://localhost:8000"
+$env:AIOPS_EMAIL="admin@example.com"
+$env:AIOPS_PASSWORD="SecurePass1"
+python scripts/collect_metrics.py
+```
 
 ## Tests
 
