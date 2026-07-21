@@ -7,7 +7,9 @@ from app.models.enums import (
     SubscriptionPlan,
 )
 from app.models.infrastructure_asset import InfrastructureAsset
+from app.models.incident import Incident
 from app.models.monitoring_metric import MonitoringMetric
+from app.models.alert import Alert
 from app.models.organization import Organization
 from app.models.organization_invite import OrganizationInvite
 from app.models.project import Project
@@ -29,6 +31,8 @@ __all__ = [
     "EmailVerificationToken",
     "EnvironmentType",
     "InfrastructureAsset",
+    "Incident",
+    "Alert",
     "MonitoringMetric",
     "InviteStatus",
     "Organization",
