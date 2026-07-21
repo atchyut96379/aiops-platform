@@ -30,6 +30,14 @@ class Settings(BaseSettings):
     # Auth rate limits (slowapi format)
     AUTH_RATE_LIMIT: str = "10/minute"
 
+    # File uploads (Module 06)
+    UPLOAD_DIR: str = "uploads"
+
+    # AI (Module 07) — optional; stub responses when unset
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    AI_ENABLED: bool = False
+
     @field_validator("SECRET_KEY")
     @classmethod
     def secret_key_not_empty(cls, value: str) -> str:
@@ -44,6 +52,10 @@ class Settings(BaseSettings):
     @property
     def is_sqlite(self) -> bool:
         return self.DATABASE_URL.startswith("sqlite")
+
+    @property
+    def ai_available(self) -> bool:
+        return bool(self.AI_ENABLED and self.OPENAI_API_KEY)
 
 
 @lru_cache

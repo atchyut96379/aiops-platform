@@ -56,3 +56,13 @@ class IncidentCommentResponse(ORMModel):
     body: str
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+
+class IncidentAttachmentResponse(ORMModel):
+    id: int
+    incident_id: int
+    filename: str
+    content_type: Optional[str] = None
+    file_size: int
+    uploaded_by_user_id: int
+    created_at: Optional[datetime] = None

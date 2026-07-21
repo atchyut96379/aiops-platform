@@ -13,7 +13,9 @@ from app.models.enums import (
 )
 from app.models.infrastructure_asset import InfrastructureAsset
 from app.models.incident import Incident
+from app.models.incident_attachment import IncidentAttachment
 from app.models.incident_comment import IncidentComment
+from app.models.knowledge_document import KnowledgeDocument
 from app.models.monitoring_metric import MonitoringMetric
 from app.models.alert import Alert
 from app.models.notification import NotificationChannel, NotificationLog
@@ -40,10 +42,12 @@ __all__ = [
     "EmailVerificationToken",
     "EnvironmentType",
     "Incident",
+    "IncidentAttachment",
     "IncidentComment",
     "IncidentSeverity",
     "IncidentStatus",
     "InfrastructureAsset",
+    "KnowledgeDocument",
     "MonitoringMetric",
     "NotificationChannel",
     "NotificationChannelType",

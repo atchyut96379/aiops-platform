@@ -28,11 +28,27 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg2://aiops:aiops@db:5432/aiops
       SECRET_KEY: change-me-to-a-long-random-secret
+      CORS_ORIGINS: http://localhost,http://localhost:5173
+      UPLOAD_DIR: /app/uploads
     ports:
       - "8000:8000"
+    volumes:
+      - aiops_uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
 
+  web:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+    container_name: aiops-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
 volumes:
   aiops_pg_data:
+  aiops_uploads:

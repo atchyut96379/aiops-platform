@@ -4,41 +4,64 @@ Enterprise AI Operations Platform — monitor infrastructure, manage incidents, 
 
 ## Current status
 
-**Module 01 — Authentication & User Management** (complete)  
-**Module 02 — Organization & Role Management** (complete)  
-**Module 03 — Infrastructure Inventory** (complete)  
-**Module 04 — Monitoring & Metrics** (MVP complete)  
-**Module 05 — Alerting & Notifications** (complete)  
-**Module 06 — Incident Management** (partial — comments complete)
+All roadmap modules (01–10) are implemented:
+
+| Module | Scope |
+|--------|--------|
+| 01 | Authentication & user management |
+| 02 | Organization, teams, projects, RBAC |
+| 03 | Infrastructure inventory |
+| 04 | Monitoring & metrics |
+| 05 | Alerting & notifications |
+| 06 | Incidents (comments + attachments) |
+| 07 | AI assistant & knowledge base |
+| 08 | Dashboard & CSV reports |
+| 09 | Audit log read/export |
+| 10 | Docker Compose, Nginx, GitHub Actions CI |
 
 See [docs/PRD.md](docs/PRD.md) and module specs in [docs/](docs/).
 
 ## Quick start (local)
 
+### Backend
+
 ```bash
 cd backend
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate   # Windows: .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-cp .env.example .env   # or use the provided SQLite .env for local dev
+cp .env.example .env
+alembic upgrade head
 uvicorn main:app --reload --port 8000
 ```
 
 - API docs: http://localhost:8000/docs
 - Health: http://localhost:8000/health
 
-## Docker Compose (PostgreSQL + API)
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+- UI: http://localhost:5173 (proxies `/api` to the backend)
+
+## Docker Compose (PostgreSQL + API + Nginx UI)
 
 ```bash
 cd deployment
 docker compose up --build
 ```
 
+- UI + API proxy: http://localhost
+- API direct: http://localhost:8000
+
 ## Tests
 
 ```bash
 cd backend
-source .venv/bin/activate
 pytest -q
 ```
 
@@ -46,9 +69,8 @@ pytest -q
 
 ```
 backend/     FastAPI application (clean architecture)
-frontend/    React + TypeScript (upcoming)
-deployment/  Docker Compose / Nginx
+frontend/    React + TypeScript + MUI dashboard
+deployment/  Docker Compose, Nginx
 docs/        PRD and module specs
-scripts/     Utility scripts
-tests/       Cross-cutting tests (optional)
+.github/     CI workflows
 ```

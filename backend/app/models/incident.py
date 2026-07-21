@@ -10,6 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.database import Base
 
 if TYPE_CHECKING:
+    from app.models.incident_attachment import IncidentAttachment
     from app.models.incident_comment import IncidentComment
     from app.models.infrastructure_asset import InfrastructureAsset
     from app.models.user import User
@@ -51,6 +52,12 @@ class Incident(Base):
     assignee: Mapped[Optional["User"]] = relationship("User", lazy="selectin")
     comments: Mapped[list["IncidentComment"]] = relationship(
         "IncidentComment",
+        back_populates="incident",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    attachments: Mapped[list["IncidentAttachment"]] = relationship(
+        "IncidentAttachment",
         back_populates="incident",
         cascade="all, delete-orphan",
         lazy="selectin",
