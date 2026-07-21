@@ -30,5 +30,9 @@ htmlcov/
 # Logs
 *.log
 
+# Uploaded files (runtime + tests)
+uploads/
+test_uploads/
+
 # Alembic
 alembic/versions/*.pyc
