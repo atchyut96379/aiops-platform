@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { isAxiosError } from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? '';
 
@@ -6,6 +6,30 @@ export const api = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
 });
+
+export function getApiErrorMessage(error: unknown, fallback = 'Something went wrong'): string {
+  if (!isAxiosError(error)) {
+    return error instanceof Error ? error.message : fallback;
+  }
+
+  const data = error.response?.data as
+    | { error?: { message?: string }; detail?: string | { msg?: string }[] }
+    | undefined;
+
+  if (data?.error?.message) return data.error.message;
+
+  if (Array.isArray(data?.detail)) {
+    return data.detail.map((item) => item.msg ?? String(item)).join('. ');
+  }
+
+  if (typeof data?.detail === 'string') return data.detail;
+
+  if (error.message === 'Network Error') {
+    return 'Cannot reach the API. Start the backend with: uvicorn main:app --reload --port 8000';
+  }
+
+  return fallback;
+}
 
 export function setAuthToken(token: string | null) {
   if (token) {

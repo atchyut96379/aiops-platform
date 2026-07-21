@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   Alert,
   Box,
@@ -10,10 +10,12 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { getApiErrorMessage } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 
 export function RegisterPage() {
   const { register } = useAuth();
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     first_name: '',
     last_name: '',
@@ -30,8 +32,9 @@ export function RegisterPage() {
     setLoading(true);
     try {
       await register(form);
-    } catch {
-      setError('Registration failed. Check your details and try again.');
+      navigate('/', { replace: true });
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Registration failed. Check your details and try again.'));
     } finally {
       setLoading(false);
     }
@@ -53,7 +56,7 @@ export function RegisterPage() {
             <TextField label="First name" value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} required fullWidth />
             <TextField label="Last name" value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} required fullWidth />
           </Stack>
-          <TextField label="Organization name" value={form.organization_name} onChange={(e) => setForm({ ...form, organization_name: e.target.value })} required fullWidth />
+          <TextField label="Organization name" value={form.organization_name} onChange={(e) => setForm({ ...form, organization_name: e.target.value })} required fullWidth helperText="Must be unique — e.g. Niveditha Solutions Ops" />
           <TextField label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required fullWidth />
           <TextField label="Password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required fullWidth helperText="At least 8 characters with uppercase and number" />
           <Button type="submit" variant="contained" size="large" disabled={loading}>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   Alert,
   Box,
@@ -10,10 +10,12 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { getApiErrorMessage } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 
 export function LoginPage() {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -25,8 +27,9 @@ export function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-    } catch {
-      setError('Invalid email or password');
+      navigate('/', { replace: true });
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Invalid email or password'));
     } finally {
       setLoading(false);
     }
